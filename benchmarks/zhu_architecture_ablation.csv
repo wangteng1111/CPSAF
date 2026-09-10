@@ -1,0 +1,10 @@
+architecture,params,label,exact,within1,within2,within4,mae,rmse
+MobileNetV2,2.29M,absolute,0.243,0.584,0.756,0.882,2.839,6.880
+MobileNetV2,2.35M,absolute,0.252,0.592,0.764,0.888,2.719,6.745
+MobileNetV2,2.35M,relative,0.330,0.698,0.826,0.907,2.342,6.339
+ResNet50,23.61M,absolute,0.258,0.602,0.789,0.894,2.615,6.623
+ResNet50,23.71M,absolute,0.254,0.596,0.781,0.891,2.655,6.686
+ResNet50,23.71M,relative,0.326,0.709,0.849,0.918,2.136,5.764
+MnasNet,1.00M,absolute,0.226,0.568,0.736,0.864,2.983,7.016
+MnasNet,1.06M,absolute,0.213,0.549,0.718,0.850,3.119,7.318
+MnasNet,1.06M,relative,0.305,0.678,0.817,0.905,2.436,6.402
