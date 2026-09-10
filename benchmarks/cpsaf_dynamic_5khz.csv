@@ -1,0 +1,9 @@
+harness,controller,track10_rmse,track20_rmse,step_settle_ms,step_success,dropout_rmse,x_jitter,u_jitter,reversals,notes
+v0.3,Position baseline,1.45834061,2.87487040,7.290,1.0,1.85765213,0.02608399,0.14965459,174.875,"signed-phase, sigma=0.15, 5 kHz, 80-Hz plant"
+v0.3,State-7 MLP,0.97620555,1.96863016,6.090,1.0,1.71131169,0.03540403,0.13190245,125.625,"801-param fixed MLP; explicit lens velocity"
+v0.3,Raw-tap-8 MLP,1.18187968,2.35743867,6.690,1.0,1.75881685,0.03084568,0.11628387,131.625,"833-param fixed MLP; no explicit velocity"
+v0.5,Position baseline,1.4886922912,2.8763139570,7.275,1.0,1.04305443,0.01496944,0.10005847,,"analog-PDAF harness; dropout trajectory differs from v0.3"
+v0.5,True-phase rawtap teacher,1.2019311545,2.3494386427,6.675,1.0,0.92319351,0.01822486,0.07734043,,"teacher reference in v0.5 harness"
+v0.5,Analog Ordinal MLP,1.1587466817,2.3063458187,7.975,1.0,0.91217177,0.01727011,0.06833521,,"current balanced analog crossbar point"
+v0.5,Analog Logit aggressive,0.899,0.911,33.0,0.125,,,,,"tracking-oriented checkpoint; acquisition fails; approximate reported values"
+v0.5,Analog Logit + hard DAgger,,,,0.25,,,,,"acquisition success improved only to ~25%; not balanced"
