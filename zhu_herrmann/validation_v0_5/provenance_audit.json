@@ -1,0 +1,32 @@
+{
+  "source_image_hw": [1512, 2016],
+  "fully_contained_grid": {
+    "stride40_per_stack": 1680,
+    "stride96_per_stack": 300
+  },
+  "herrmann_paper_split": {
+    "train_candidates_stride40": 772800,
+    "test_candidates_stride40": 84000,
+    "train_retention_fraction": 0.5007763975155279,
+    "test_retention_fraction": 0.6761904761904762
+  },
+  "zhu_counts_if_paper_510_stacks": {
+    "train_candidates_stride96": 138000,
+    "test_candidates_stride96": 15000,
+    "train_retention_fraction": 0.4941086956521739,
+    "test_retention_fraction": 0.5203333333333333,
+    "overall_retention_fraction": 0.4966797385620915
+  },
+  "zhu_counts_if_public_release_398_stacks": {
+    "train_candidates_stride96": 105300,
+    "test_candidates_stride96": 14100,
+    "train_required_retention_fraction": 0.6475498575498575,
+    "test_required_retention_fraction": 0.5535460992907801,
+    "overall_required_retention_fraction": 0.6364489112227806
+  },
+  "blockers": [
+    "Paper says 460/50 stacks, official public README says 351/47 sweeps.",
+    "Authoritative indexed text confirms confidence filtering but not the numeric threshold.",
+    "Therefore a public-release manifest matching 68187/7805 is not by itself proof of protocol fidelity."
+  ]
+}
