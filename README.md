@@ -2,23 +2,63 @@
 
 Continuous / phase-sensing autofocus research enabled by HCM crossbar neural control.
 
-This repository archives the simulation environments, controller prototypes, evaluation reports, and trained checkpoints produced during the September 2026 CPSAF study.
+This repository archives the simulation environments, controller prototypes, evaluation reports, and validation tooling produced during the CPSAF study.
+
+## Research path
+
+The project is now organized around a strict three-stage workflow:
+
+1. **Validate the autofocus simulation environment** against Herrmann / Choi / Zhu.
+2. **Train hardware-compatible CPSAF MLP controllers** only inside the validated environment.
+3. **Sim-to-real transfer to HCM hardware** after the simulator and controller are both validated.
 
 ## Repository layout
 
-- `archive/` — versioned research snapshots and reconstruction instructions.
-- `zhu_herrmann/` — Zhu 2025 / Herrmann 2020 reproduction notes and protocol status.
-- `benchmarks/` — quantitative test-case comparisons against published autofocus baselines.
-- `artifacts/` — key machine-readable metrics/checkpoint metadata.
+- `zhu_herrmann/` — Zhu 2025 / Herrmann 2020 reproduction and validation environment.
+- `benchmarks/` — quantitative comparisons and published autofocus targets.
+- `hcm_controllers/` — hardware-compatible controller prototypes.
+- `meta_latency/` — early latency / actuator meta-tests.
+- `archive/` — archive notes and reconstruction information.
+- `artifacts/` — machine-readable metrics and checkpoint metadata.
 
-## Current hardware-oriented direction
+## Zhu/Herrmann validation status
 
-The target deployment topology is a **single fixed feed-forward crossbar MLP** driven by Canon-style dual-pixel A/B analog phase signals plus lens-state history. Runtime inference must not rely on explicit Acquire/Track/Hold state switching, argmin disparity decoding, or digital strategy selection.
+The current canonical validation layer is `zhu_herrmann/validation_v0_5/`.
 
-## Reproduction status
+**Current status: protocol-validated + provenance-audited; data-level validation pending.**
 
-The Zhu/Herrmann software/protocol environment has been developed through v0.4. Full numerical reproduction of Zhu 2025 on the official Herrmann dataset is still gated by the very large official dataset and exact data-filtering protocol. Mock/synthetic results are explicitly labeled and must not be confused with published-data reproduction.
+Already passed:
 
-## Archive policy
+- 49-state focus formulation;
+- 97-class relative action formulation;
+- Choi AFPE conventions;
+- squared-distance SORD;
+- MobileNetV2 parameter count and 49-start evaluation plumbing;
+- stride-96 / all-start protocol invariants;
+- mounted-data and provenance audit tooling.
 
-The core archive preserves all source code, reports, CSV/JSON results, and trained checkpoints available in the session. Python bytecode is excluded. A few large synthetic intermediate arrays that are reproducible from retained scripts are listed explicitly in the archive notes rather than duplicated into GitHub.
+Still required before any large CPSAF training is accepted:
+
+- mount and audit the official LearnAF data;
+- resolve or empirically cross-check the confidence filtering rule without train/test-specific tuning;
+- reproduce Zhu's 68,187 / 7,805 spatial-patch counts;
+- run the 10k relative-label MobileNetV2 baseline;
+- reproduce Zhu's published single-step metrics within frozen tolerances.
+
+The repository explicitly tracks the discrepancy between Herrmann's paper split (460 train / 50 test stacks) and the smaller current public LearnAF release (351 train / 47 test sweeps). This discrepancy must not be silently ignored.
+
+## Hardware-oriented direction
+
+The deployment target remains a **fixed feed-forward crossbar MLP** driven by Dual-Pixel A/B information plus lens-state history. Runtime inference must not depend on explicit Acquire/Track/Hold state switching, argmin disparity decoding, or digital strategy selection.
+
+However, HCM/controller scaling is intentionally paused until the Stage-1 simulator validation gate passes.
+
+## Snapshot integrity
+
+The current Stage-1 validation sandbox package has SHA-256:
+
+```text
+d6592a718db5cea6ad3c2e4880dfafc9f3feb7892d2ee1e264a9a99b3908ae12
+```
+
+See `zhu_herrmann/validation_v0_5/SNAPSHOT_SHA256.md` and `CURRENT_VALIDATION_STATUS.md` for details.
