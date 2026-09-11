@@ -1,0 +1,18 @@
+{
+  "protocol": "Zhu/Herrmann stage-1 scientific validation",
+  "gates": {
+    "protocol_unit_tests": {
+      "pass": true,
+      "details": [
+        {"script": "test_v02.py", "returncode": 0, "stdout": "v0.2 unit tests passed", "stderr": "", "pass": true},
+        {"script": "test_v03.py", "returncode": 0, "stdout": "v0.3 unit tests: OK", "stderr": "", "pass": true},
+        {"script": "test_v04.py", "returncode": 0, "stdout": "v0.4 paper-faithful unit tests: OK", "stderr": "", "pass": true}
+      ]
+    },
+    "train_manifest": {"pass": false, "status": "MISSING"},
+    "test_manifest": {"pass": false, "status": "MISSING"},
+    "published_metric_reproduction": {"pass": false, "status": "MISSING"}
+  },
+  "scientifically_validated": false,
+  "status": "BLOCKED"
+}
