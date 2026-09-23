@@ -1,0 +1,55 @@
+{
+  "calibration": {
+    "mae_diopter": 0.0025128354650327013,
+    "rmse_diopter": 0.004355791754500455,
+    "disparity_min_px": -18.983109079110726,
+    "disparity_max_px": 13.298716268385636,
+    "response_mean": 0.9676434855071866
+  },
+  "heldout_static_sensor_bridge": {
+    "N": 49.0,
+    "exact_round": 1.0,
+    "within1": 1.0,
+    "within2": 1.0,
+    "within4": 1.0,
+    "MAE": 0.030311625234190263,
+    "RMSE": 0.038387318487774214,
+    "mean_confidence": 0.9653419169709256
+  },
+  "phase_servo_step": {
+    "rmse_index": 4.668504463040776,
+    "mae_index": 1.0210115366336694,
+    "maxae_index": 31.998197760224272,
+    "rmse_diopter": 0.9291655212625822,
+    "mean_confidence": 0.996689714417778,
+    "command_jitter_rms": 0.19434638421022823,
+    "velocity_reversals": 1.0,
+    "settle_ms": 7.280000000000002,
+    "overshoot_index": 0.4945811085426257
+  },
+  "phase_servo_track_10Hz": {
+    "rmse_index": 1.3079765186491217,
+    "mae_index": 1.186624990588695,
+    "maxae_index": 1.8413887165773772,
+    "rmse_diopter": 0.2615339968392027,
+    "mean_confidence": 0.9785656081721585,
+    "command_jitter_rms": 0.022678786134433627,
+    "velocity_reversals": 5.0
+  },
+  "oracle_step": {
+    "rmse_index": 4.52841158104404,
+    "mae_index": 0.9649427321559285,
+    "maxae_index": 31.998391612752986,
+    "rmse_diopter": 0.9012079345173111,
+    "mean_confidence": 0.9968700874947098,
+    "command_jitter_rms": 0.0,
+    "velocity_reversals": 4.0,
+    "settle_ms": 7.140000000000001,
+    "overshoot_index": 0.4852671549209333
+  },
+  "invariants": {
+    "integer_static_replay_max_abs_error": 0.0,
+    "finite_step_metrics": true,
+    "command_updates_step": 800
+  }
+}
