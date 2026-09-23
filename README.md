@@ -2,289 +2,178 @@
 
 **Continuous phase-sensing autofocus with hardware-compatible neural control.**
 
-This repository contains the autofocus research line of Neuro-AF: simulation environments, academic benchmark reconstruction, dynamic closed-loop control models, hardware-compatible HCM/crossbar controller prototypes, validation tooling, and the current path toward real-camera experiments.
+CPSAF studies whether the inner autofocus loop can be replaced by a fast learned hardware controller while keeping the real optical sensor and lens ecosystem. The target is not “fast neural inference” in isolation, but a complete closed-loop system:
 
-The central research question is not whether neural inference can be made extremely fast in isolation, but whether a complete autofocus loop can benefit from a high-bandwidth learned controller when the full chain is considered:
+~~~text
+scene / target motion
+  → PDAF / Dual-Pixel observation
+  → sensor readout
+  → CPSAF / HCM controller
+  → lens command
+  → real lens actuator
+  → new optical observation
+~~~
 
-```text
-optical scene / target motion
-        ↓
-PDAF / Dual-Pixel observation
-        ↓
-sensor readout + signal representation
-        ↓
-hardware-compatible neural controller
-        ↓
-command/interface latency
-        ↓
-lens actuator dynamics
-        ↓
-new optical observation
-```
-
-Accordingly, the project now treats autofocus as a **closed-loop sensing–decision–actuation problem** rather than a compute-latency benchmark.
+The project therefore treats autofocus as a **closed-loop sensing–decision–actuation problem**. Subject selection / identity tracking are separate outer-loop problems; CPSAF currently targets the phase-to-lens inner loop.
 
 ---
 
-## Current project status
+## Current research status
 
-The project is organized into three validation stages.
+| Area | Current state |
+|---|---|
+| Academic AF reconstruction | **Protocol reconstructed; official-data numerical validation still open** |
+| Unified DP/phase simulation | **v0.1 software loop closed and smoke-tested** |
+| HCM-compatible controller | fixed feed-forward / crossbar prototypes exist; scaling is intentionally secondary to validation |
+| Real-camera hardware | **Canon EOS 40D selected as the primary first-generation test bench** |
 
-### Stage 1 — Validate the academic AF environment
+### 1. Zhu / Herrmann validation
 
-Canonical validation layer: `zhu_herrmann/validation_v0_5/`.
+Canonical work: [zhu_herrmann/validation_v0_5/](zhu_herrmann/validation_v0_5/)
 
-Current status:
+Frozen/reconstructed elements include the 49 LearnAF focal states, 97 relative actions, 128×128 patches, Zhu stride-96 extraction, all-49-start evaluation, Choi AFPE [L,R,f,x,y], RoI/Lens positional encodings, squared-distance SORD, and the 5-channel / 97-class MobileNetV2 plumbing.
 
-> **Protocol validated + provenance audited; official-data numerical validation pending.**
+The remaining gate is **official-data numerical reproduction**: mount/audit the authoritative LearnAF release, freeze the confidence-filter rule, reproduce the published sample counts, and reproduce the single-step benchmark. A provenance discrepancy is tracked explicitly: Herrmann reports 460/50 train/test stacks whereas the currently documented public archive reports 351/47 focal sweeps.
 
-Already reconstructed/frozen:
+### 2. Unified AF simulator
 
-- 49 LearnAF focal states and the official focus-distance table;
-- 128×128 patches and Zhu stride-96 extraction;
-- all-49-start expansion;
-- relative action `GT-current`, range `[-48,+48]`, 97 classes;
-- Choi AFPE `[L,R,f,x,y]` conventions;
-- RoI-PE / Lens-PE conventions;
-- squared-distance SORD with `T=1`;
-- MobileNetV2 5-channel / 97-class parameter count and training plumbing;
-- strict provenance and validation gates.
+Canonical environment: [unified_af/v0_1/](unified_af/v0_1/)
 
-Open data-level gate:
+The simulator bridges real Dual-Pixel focal-stack observations to a continuous closed-loop lens plant:
 
-- mount and audit the official LearnAF release;
-- resolve or freeze the confidence-filtering rule;
-- reproduce Zhu's reported 68,187 / 7,805 spatial-stack counts;
-- run the 10k relative-label MobileNetV2 baseline;
-- reproduce the published single-step metrics within the frozen tolerance policy.
-
-A first-class provenance discrepancy is tracked explicitly: Herrmann reports 460/50 train/test stacks, while the current public LearnAF archive documents 351/47 focal sweeps. This difference must not be silently normalized away.
-
-### Stage 2 — Unified DP-image + dynamic closed-loop simulation
-
-Canonical bridge environment: `unified_af/v0_1/`.
-
-This closes the previous software gap between:
-
-```text
-Herrmann / Zhu:
-real DP focal-stack observations + discrete/static lens states
-```
-
-and
-
-```text
-CPSAF dynamic simulator:
-continuous lens plant + synthetic signed focus error
-```
-
-The new unified loop is:
-
-```text
+~~~text
 target truth
-  → defocus-equivalent DP focal-stack replay
-  → left/right A/B image observation
-  → calibrated disparity/defocus bridge or raw-DP controller
+  → defocus-equivalent A/B focal-stack replay
+  → raw DP observation
+  → calibrated phase/defocus bridge or learned raw-DP controller
   → readout + compute delay
   → continuous lens plant
   → next A/B observation
-```
+~~~
 
-Important properties of `unified_af/v0_1`:
+Key design choices:
 
-- real LearnAF/Herrmann stacks and deterministic synthetic smoke stacks share one API;
-- measured 49-slice DP stacks can be queried at continuous lens positions by interpolation;
-- moving targets preserve **optical defocus in diopter space**, not raw focus-index displacement;
-- the transparent bridge baseline uses horizontal gradient NCC plus a cross-stack empirical monotone disparity→defocus LUT;
-- calibration and held-out evaluation stacks are separated to prevent leakage;
-- sensor sampling, readout delay, compute delay, command scheduling and continuous plant integration are explicit;
-- the controller receives both decoded defocus/confidence and raw A/B images, allowing a future HCM controller to bypass the bridge decoder;
-- the generic second-order lens plant can later be replaced by an identified Canon EF plant without changing the simulator API.
+- continuous interpolation of measured 49-slice DP stacks;
+- motion represented in **diopter space**, not raw focus-index displacement;
+- transparent reference estimator: horizontal-gradient NCC + empirical monotone disparity→defocus LUT;
+- separate calibration and held-out stacks;
+- explicit sensor sampling, readout, compute delay, command scheduling and actuator dynamics;
+- raw A/B images remain available so HCM can bypass the reference decoder.
 
-### Stage 3 — Sim-to-real / camera hardware
-
-The target deployment architecture remains a **fixed feed-forward hardware-compatible controller** driven by phase/Dual-Pixel information plus short lens-state history.
-
-The real-camera path is:
-
-1. validate the unified environment on held-out real LearnAF stacks;
-2. adapt the HCM/raw-tap controller to the unified simulator;
-3. identify a real Canon EF lens command→position plant;
-4. measure camera PDAF/DP readout timing;
-5. replace stack replay with live measured Canon observations;
-6. compare conventional and CPSAF control under the same real optical/actuator test cases.
-
-Older Canon digital bodies such as the 40D/50D remain candidate research platforms because they provide a digital image ground truth while the feasibility of direct PDAF access and lens-control interception is investigated separately.
-
----
-
-## Unified AF simulator v0.1
-
-Location: `unified_af/v0_1/`
-
-### Quick start
-
-```bash
-cd unified_af/v0_1
-pip install -r requirements.txt
-python test_unified_env.py
-python run_smoke_validation.py
-```
-
-Expected smoke-test behavior:
-
-- unit/smoke tests pass;
-- `results/smoke_report.json` is regenerated;
-- `results/phase_servo_step_trace.npz` is regenerated locally.
-
-The compressed trace is a reproducible generated artifact; the repository's scientific evidence is the source code, deterministic test configuration, and machine-readable JSON metrics.
-
-### Current synthetic smoke result
-
-These numbers verify software closure and synthetic observability only. They are **not** LearnAF benchmark results and **not** Canon hardware results.
+Current deterministic smoke results are software/observability checks only:
 
 | Test | v0.1 smoke result |
 |---|---:|
 | held-out sensor MAE | 0.0303 focus index |
 | held-out sensor RMSE | 0.0384 focus index |
-| held-out within ±1 | 100% |
 | 8→40 step settling | 7.28 ms |
-| step overshoot | 0.495 index |
 | oracle step settling | 7.14 ms |
-| 10 Hz tracking RMSE | 1.308 index |
 | 10 Hz tracking RMSE | 0.262 D |
-| exact integer-stack replay error | 0 |
 
-The ~0.14 ms gap between the phase-servo bridge and the truth-using oracle in the synthetic step test indicates that, under this smoke-test observability, the generic actuator plant rather than the software bridge dominates the step-settling bound. This is a simulator result only and must not be projected onto real Canon hardware before plant and sensor identification.
+These are **not** LearnAF reproduction results and **not** Canon hardware results.
 
-### Why the bridge estimator is intentionally simple
+### 3. HCM / crossbar controller work
 
-An initial unconstrained 2-D phase-correlation bridge was unstable in large-defocus regions. v0.1 therefore uses a constrained **horizontal gradient-domain normalized cross-correlation** search with subpixel refinement, followed by an empirical monotone LUT learned only from calibration stacks.
+Existing work under [hcm_controllers/](hcm_controllers/) and [meta_latency/](meta_latency/) includes:
 
-This estimator is a transparent reference path, not the proposed final CPSAF/HCM algorithm and not a claim about Canon's proprietary PDAF decoder. Its role is to make the sensor→controller→plant loop observable and testable while preserving the raw A/B images for learned-controller experiments.
+- Acquire–Track–Hold teacher experiments;
+- fixed feed-forward crossbar MLP prototypes;
+- raw-tap inputs using short error/lens histories;
+- 5 kHz static, step, sinusoidal, mixed-motion and confidence-dropout tests;
+- latency/actuator meta-tests.
+
+The retained conclusion is:
+
+~~~text
+AF performance ≠ compute latency alone
+~~~
+
+Useful hardware latency must survive sensor-readout, command, actuator and optical-settling limits. Large HCM scaling therefore remains downstream of simulator and camera validation.
 
 ---
 
-## Dynamic-control findings retained from earlier CPSAF meta-tests
+## Real-camera direction: Canon EOS 40D
 
-The early latency and actuator studies remain useful as architecture studies, but their interpretation has been narrowed.
+The current hardware plan is documented in:
 
-The important conclusion is:
+**[hardware/EOS40D_PDAF_TESTBENCH.md](hardware/EOS40D_PDAF_TESTBENCH.md)**
 
-```text
-AF performance ≠ compute latency alone
-```
+The 40D is preferred over the R10 and Sony A7-series for the first hardware bench because it combines:
 
-A more defensible formulation is:
+- a **dedicated phase-detection AF CMOS** and separate AF-FPC;
+- a digital imaging sensor for independent focus ground truth;
+- the Canon EF lens ecosystem;
+- a substantially more accessible separation between AF sensing, AF computation and lens actuation.
 
-```text
-T_AF = f(T_sensor, T_readout, T_compute, controller, actuator, target dynamics, noise)
-```
+The present acquisition strategy is:
 
-High-rate sensing can make very low controller latency useful, while an actuator- or sensor-limited system cannot be transformed simply by reducing neural inference latency. The repository therefore preserves the latency sweeps as meta-tests rather than presenting them as camera-level validation.
+~~~text
+Phase 1:
+40D AF sensor
+  → Canon/SPT service AF Sensor Output
+  → USB capture / service-command reverse engineering
+  → identify A_i[n], B_i[n]
 
-Existing controller work includes:
+Phase 2:
+AF-FPC hardware tap
+  → native-rate phase data
+  → CPSAF / HCM
+  → direct EF controller
+  → EF lens
+  → main-sensor image ground truth
+~~~
 
-- Acquire–Track–Hold software teacher experiments;
-- fixed feed-forward crossbar MLP prototypes;
-- raw-tap controller inputs using short error/lens histories rather than explicit runtime mode switching;
-- 5 kHz dynamic tests with static, step, sinusoidal, mixed-motion and confidence-dropout cases.
+The service/USB path is a **discovery and labeling path**, not the final latency benchmark. The final timing experiment must use the AF-FPC/native sensor boundary and report estimator latency, sensor-to-command latency, and full optical settling separately.
 
-Large controller scaling is intentionally subordinate to simulator validation: a more powerful HCM should not be trained against an unvalidated sensing/plant model.
+---
+
+## Validation roadmap
+
+1. **Gate A — academic reproduction:** reproduce Zhu/Herrmann on authoritative LearnAF data.
+2. **Gate B — real-stack sensing:** validate the DP disparity/defocus bridge on held-out real focal stacks.
+3. **Gate C — 40D sensor access:** recover AF Sensor Output, reverse the service USB stream, and identify paired phase line data.
+4. **Gate D — real actuator model:** characterize EF command→lens-position dynamics, deadband, reversal and repeatability.
+5. **Gate E — direct hardware loop:** AF-FPC → HCM → EF lens.
+6. **Gate F — comparative camera test:** run Canon AF and CPSAF from matched starting conditions and evaluate final focus, settling, hunting and failure probability against independent image-plane ground truth.
+
+Strong camera-level claims require the later gates; synthetic or service-USB results must not be relabeled as real-time hardware validation.
 
 ---
 
 ## Repository layout
 
-```text
+~~~text
 CPSAF/
 ├── README.md
+├── hardware/
+│   └── EOS40D_PDAF_TESTBENCH.md       # current real-camera plan
 ├── zhu_herrmann/
-│   ├── v0_4/                         # focal-stack AF environment
-│   └── validation_v0_5/              # frozen academic validation gates
+│   ├── v0_4/
+│   └── validation_v0_5/               # frozen academic validation gates
 ├── unified_af/
-│   └── v0_1/                         # DP-image + continuous-plant bridge
+│   └── v0_1/                          # DP observation + continuous plant
 ├── hcm_controllers/
-│   └── v0_3_crossbar/                # hardware-compatible controller prototypes
+│   └── v0_3_crossbar/
 ├── meta_latency/
-│   └── v0_1/                         # early latency/actuator meta-tests
-├── benchmarks/                       # published/static vs CPSAF dynamic comparisons
-├── artifacts/                        # checkpoint/result metadata
-└── archive/                          # historical notes and reconstruction context
-```
+│   └── v0_1/
+├── benchmarks/
+├── artifacts/
+└── archive/
+~~~
+
+### Unified simulator quick start
+
+~~~bash
+cd unified_af/v0_1
+pip install -r requirements.txt
+python test_unified_env.py
+python run_smoke_validation.py
+~~~
 
 ---
 
-## Evaluation philosophy
+## Project principle
 
-Two benchmark families are kept distinct.
+The intended contribution is a **hardware-compatible learned fast inner autofocus loop** whose benefit remains measurable after real sensing, readout, lens dynamics and optical feedback are included.
 
-### Static academic AF metrics
-
-Used for Herrmann / Choi / Zhu comparison:
-
-- exact focus state;
-- within ±1 / ±2 / ±4 states;
-- MAE;
-- RMSE;
-- focus-hunting rate.
-
-### Dynamic closed-loop metrics
-
-Used for CPSAF control evaluation:
-
-- tracking RMSE / MAE;
-- diopter-domain error;
-- settling time;
-- overshoot;
-- command jitter;
-- lens-direction reversals / hunting;
-- confidence-dropout behavior;
-- eventual P95/P99 settling and failure probability in real-hardware tests.
-
-Published static benchmark values and current dynamic simulator values must not be numerically ranked against one another until both policies are run through the same bridge benchmark.
-
----
-
-## Validation gates before strong scientific claims
-
-### Gate A — Official LearnAF / Zhu reproduction
-
-Required before claiming an academically validated baseline comparison.
-
-### Gate B — Held-out real-stack sensor bridge
-
-Fit any disparity/defocus calibration on the LearnAF training split only, freeze it, and evaluate held-out stacks versus defocus magnitude, texture, illumination/SNR, ROI position and mixed-depth content.
-
-### Gate C — Real lens plant identification
-
-Replace the generic second-order model with measured Canon EF dynamics across start position, displacement, direction, reversal, update rate, velocity/acceleration saturation, dead zone, hysteresis and backlash where observable.
-
-### Gate D — Live Canon sensor bridge
-
-Replace focal-stack replay with measured camera PDAF/DP observations and measured timing while preserving the controller and plant interfaces.
-
-Only after these gates should the project make camera-level performance claims.
-
----
-
-## Reproducibility and non-claims
-
-This repository deliberately distinguishes four evidence levels:
-
-1. **protocol reconstruction** — code/protocol matches published descriptions;
-2. **synthetic smoke validation** — software architecture executes and invariants hold;
-3. **official-data numerical validation** — benchmark numbers reproduce on the authoritative dataset;
-4. **real-hardware validation** — measured camera/lens behavior supports the same conclusion.
-
-Results from a lower level must not be relabeled as evidence from a higher level.
-
-The current strongest completed result is the software closure of a DP-image-observation + continuous-actuator autofocus loop. Official LearnAF numerical reproduction and real Canon validation remain open gates.
-
----
-
-## Key project principle
-
-The intended CPSAF contribution is not merely “a neural network that runs in nanoseconds.” The research target is a **hardware-compatible learned fast inner autofocus loop** whose benefit survives realistic sensing, timing and actuator constraints.
-
-That is the standard against which the simulator, controller and eventual hardware experiments are being built.
+The project currently has a closed software loop and a defined Canon 40D hardware path. The next decisive milestones are official LearnAF reproduction and direct characterization of the 40D AF Sensor Output / AF-FPC interface.
